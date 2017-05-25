@@ -159,6 +159,5 @@ def rollUpDataframe(dataframe, rollUpNameArray, rollUpUCCArray, negativeColumns,
     for x in range(len(rollUpNameArray)):
         if(rollUpNameArray[x] in (negativeColumns)):
             multiple *= -1
-            print("I found a negative "+str(multiple))
         dataframe[rollUpNameArray[x]] = np.where(dataframe['UCC'].isin(rollUpUCCArray[x]), dataframe['COST']*multiple, 0.0)
     return(dataframe)
