@@ -161,3 +161,5 @@ def rollUpDataframe(dataframe, rollUpNameArray, rollUpUCCArray, negativeColumns,
             multiple *= -1
         dataframe[rollUpNameArray[x]] = np.where(dataframe['UCC'].isin(rollUpUCCArray[x]), dataframe['COST']*multiple, 0.0)
     return(dataframe)
+
+    
