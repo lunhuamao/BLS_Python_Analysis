@@ -162,4 +162,10 @@ def rollUpDataframe(dataframe, rollUpNameArray, rollUpUCCArray, negativeColumns,
         dataframe[rollUpNameArray[x]] = np.where(dataframe['UCC'].isin(rollUpUCCArray[x]), dataframe['COST']*multiple, 0.0)
     return(dataframe)
 
+###############################################################################################################################
+
+def printIncomeBrackets(incomeBrackets):
+    length = len(incomeBrackets)
+    for x in range(0,(length-1)):
+            print(str(incomeBrackets[x])+" - "+str(incomeBrackets[x+1]))
     
