@@ -167,5 +167,6 @@ def rollUpDataframe(dataframe, rollUpNameArray, rollUpUCCArray, negativeColumns,
 def printIncomeBrackets(incomeBrackets):
     length = len(incomeBrackets)
     for x in range(0,(length-1)):
-            print(str(incomeBrackets[x])+" - "+str(incomeBrackets[x+1]))
+        print(x)
+        print(str(incomeBrackets[x])+" - "+str(incomeBrackets[x+1]))
     
