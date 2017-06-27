@@ -155,11 +155,19 @@ def categoricalUCCRollUp(stubfile,abbreviations,ignoreUCCs=None):
 ###############################################################################################################################
 
 import numpy as np
-def rollUpDataframe(dataframe, rollUpNameArray, rollUpUCCArray, negativeColumns, multiple):
-    for x in range(len(rollUpNameArray)):
-        if(rollUpNameArray[x] in (negativeColumns)):
+def rollUpDataframe(dataframe, rollUpNameList, rollUpUCCList, negativeColumns, multiple):
+    for x in range(len(rollUpNameList)):
+        if(rollUpNameList[x] in (negativeColumns)):
             multiple *= -1
-        dataframe[rollUpNameArray[x]] = np.where(dataframe['UCC'].isin(rollUpUCCArray[x]), dataframe['COST']*multiple, 0.0)
+        dataframe[rollUpNameList[x]] = np.where(dataframe['UCC'].isin(rollUpUCCList[x]), dataframe['COST']*multiple, 0.0)
+    return(dataframe)
+
+# import numpy as np
+def rollUpDataframeDict(dataframe, rollUpDict, negativeColumns, multiple):
+    for k,v in rollUpDict.items():
+        if(k in (negativeColumns)):
+            multiple *= -1
+        dataframe[k] = np.where(dataframe['UCC'].isin(v), dataframe['COST']*multiple, 0.0)
     return(dataframe)
 
 ###############################################################################################################################
