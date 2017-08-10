@@ -91,9 +91,9 @@ def subsetDataframe(dataframe, columnName,  minValue, secondColumnName = None, m
 
 def binColumn(dataframe, toBinColumnName, binValues, binnedColumnName, labels=None):
     if labels==None:
-        dataframe[binnedColumnName] = pd.cut(dataframe.loc[:,toBinColumnName], bins=binValues)
+        dataframe[binnedColumnName] = pd.cut(dataframe[toBinColumnName], bins=binValues)
     else:
-        dataframe[binnedColumnName] = pd.cut(dataframe.loc[:,toBinColumnName], bins=binValues, labels=labels)
+        dataframe[binnedColumnName] = pd.cut(dataframe[toBinColumnName], bins=binValues, labels=labels)
     return(dataframe)
 
 
@@ -167,6 +167,8 @@ def rollUpDataframeDict(dataframe, rollUpDict, negativeColumns, multiple):
         if(k in (negativeColumns)):
             multiple *= -1
         dataframe[k] = np.where(dataframe['UCC'].isin(v), dataframe['COST']*multiple, 0.0)
+        if(k in (negativeColumns)):
+            multiple *= -1
     return(dataframe)
 
 ###############################################################################################################################
@@ -176,4 +178,137 @@ def printIncomeBrackets(incomeBrackets):
     for x in range(0,(length-1)):
         print(x)
         print(str(incomeBrackets[x])+" - "+str(incomeBrackets[x+1]))
+
+###############################################################################################################################
+
+def getExpendPercent(cleanDf, income):
+    if(income <= 0):
+        return(1)
+    coefficients = np.polyfit(cleanDf.FINCBTXM, cleanDf.iTotalExp, deg = 3)
+    p = np.poly1d(coefficients)
+    percent = p(income)/income
+    if(percent > 1):
+        percent = 1
+    return(percent)
     
+###############################################################################################################################
+
+def getSubsetNEWIDs(dataframe, columnName,  minValue, secondColumnName = None, maxValue = None):
+    if columnName in dataframe.columns:
+        # only subsetting based off one column
+        if secondColumnName == None:
+            # subsetting not within a range
+            if maxValue == None:
+                value = minValue
+                # value is a list
+                if isinstance(value, list):
+                    dataframe = dataframe[dataframe[columnName].isin(value)]
+                # value is scalar
+                else:
+                    dataframe = dataframe[dataframe[columnName]==value]
+            # the subsetting is within a range
+            else:
+                dataframe = dataframe[(dataframe[columnName]>=minValue) & (dataframe[columnName]<=maxValue)]
+        # subsetting based on two columns
+        else:
+            # subsetting not within a range
+            if maxValue == None:
+                value = minValue
+                # value is a list
+                if isinstance(value, list):
+                    dataframe = dataframe[(dataframe[columnName].isin(value)) & (dataframe[secondColumnName].isin(value))]
+                # value is scalar
+                else:
+                    dataframe = dataframe[(dataframe[columnName]==value) & (dataframe[secondColumnName]==value)]
+            # the subsetting is within a range
+            else:
+                dataframe = dataframe[((dataframe[columnName]>=minValue) & (dataframe[columnName]<=maxValue)) & ((dataframe[secondColumnName]>=minValue) & (dataframe[secondColumnName]<=maxValue)) ]
+        return(dataframe.NEWID)
+    else:
+        print("Could not a column named "+columnName+" in the dataframe")
+        
+###############################################################################################################################
+# ### Subset Dictionary function
+
+# #### Parameters:
+# - subsetNEWIDsDict: dictionary that contains lists and/or dictionaries containing NEWIDs based on characteristics
+# - subsetKeysList: an array of strings that correspont do the keys in the subsetNEWIDsDict that you wish to subset for
+
+# #### Returns:
+# - dictionary or set containing NEWIDs corresponding to the subsetKeysList
+import itertools
+def subsetDictionary(subsetNEWIDsDict, subsetKeysList):
+    singleSubsets = []
+    nonDictSubset = set()
+    removeSubsets = []
+    # Dealing with non-dictionary entries in the subsetNEWIDsDict
+    for checkKey in subsetKeysList:
+        if not isinstance(subsetNEWIDsDict[checkKey],dict):
+            singleSubsets.append(subsetNEWIDsDict[checkKey])
+            removeSubsets.append(checkKey)
+    if len(removeSubsets) > 0:
+        nonDictSubset = set.intersection(*map(set,singleSubsets))
+
+    # re-creating the subsetKeysList containing only Dictionary entries 
+    subsetKeysList = [x for x in subsetKeysList if x not in removeSubsets]
+
+    # if there are no dictionary entries
+    if(len(subsetKeysList) == 0):
+        return(nonDictSubset)
+    
+    # creating tuples that become keys of subset dictionary
+    keys = []
+    for subsetKey in subsetKeysList:
+        keyList = []
+        for key in subsetNEWIDsDict[subsetKey].keys():
+            keyList.append(key)
+        keys.append(keyList)
+    keyCombos = list(itertools.product(*keys))
+    
+    subset = {}
+    for keys in keyCombos:
+        keyNEWIDs = []
+        for i in range(0,len(subsetKeysList)):
+            keyNEWIDs.append(subsetNEWIDsDict[subsetKeysList[i]][keys[i]])
+        intersectionNEWIDs = set.intersection(*map(set,keyNEWIDs))
+        intersectionNEWIDs = intersectionNEWIDs.intersection(nonDictSubset)
+        subset[keys] = intersectionNEWIDs
+    return(subset)
+
+###############################################################################################################################
+
+def expensesSumByNEWID(subsetDictionary, dataDict):
+    expensesByNEWID = {}
+    mtbiKeys = [key for key in dataDict.keys() if 'mtbi' in key.lower()]
+    for key,value in subsetDictionary.items():
+        subsetDataframe = pd.DataFrame()
+        for mtbiKey in mtbiKeys:
+            subsetDataframe = subsetDataframe.append(dataDict[mtbiKey][dataDict[mtbiKey].NEWID.isin(value)], ignore_index=True)
+        expensesByNEWID[key] = subsetDataframe
+    return(expensesByNEWID)
+
+
+
+###############################################################################################################################
+
+def dictionarySum(incomeClassesDict):
+    for key,value in incomeClassesDict.items():
+        value = value.drop("NEWID", 1)
+        classDictionary = {}
+        for column in value.columns:
+                classDictionary[column] = value[column].sum()
+        incomeClassesDict[key] = classDictionary
+    return(incomeClassesDict)
+
+###############################################################################################################################
+
+def incomeBeforeTaxesSubset(dataDict, subsetNEWIDdict, incomeBeforeTaxesColumn):
+    incomeBeforeTaxesDict = {}
+    for key,value in subsetNEWIDdict.items():
+        totalIncome = 0
+        usedNEWIDs = set()
+        for fmliName in [key for key in dataDict.keys() if 'fmli' in key.lower()]:
+            totalIncome += sum(list(dataDict[fmliName][dataDict[fmliName].NEWID.isin(subsetNEWIDdict[key]) & ~dataDict[fmliName].NEWID.isin(usedNEWIDs)][incomeBeforeTaxesColumn]/12))
+            usedNEWIDs = usedNEWIDs.union(set(dataDict[fmliName][dataDict[fmliName].NEWID.isin(subsetNEWIDdict[key])].NEWID))
+        incomeBeforeTaxesDict[key] = totalIncome 
+    return(incomeBeforeTaxesDict)

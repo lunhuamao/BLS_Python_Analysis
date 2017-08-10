@@ -91,9 +91,9 @@ def subsetDataframe(dataframe, columnName,  minValue, secondColumnName = None, m
 
 def binColumn(dataframe, toBinColumnName, binValues, binnedColumnName, labels=None):
     if labels==None:
-        dataframe[binnedColumnName] = pd.cut(dataframe.loc[:,toBinColumnName], bins=binValues)
+        dataframe.loc[binnedColumnName] = pd.cut(dataframe.loc[:,toBinColumnName], bins=binValues)
     else:
-        dataframe[binnedColumnName] = pd.cut(dataframe.loc[:,toBinColumnName], bins=binValues, labels=labels)
+        dataframe.loc[binnedColumnName] = pd.cut(dataframe.loc[:,toBinColumnName], bins=binValues, labels=labels)
     return(dataframe)
 
 
@@ -162,12 +162,13 @@ def rollUpDataframe(dataframe, rollUpNameList, rollUpUCCList, negativeColumns, m
         dataframe[rollUpNameList[x]] = np.where(dataframe['UCC'].isin(rollUpUCCList[x]), dataframe['COST']*multiple, 0.0)
     return(dataframe)
 
-# import numpy as np
 def rollUpDataframeDict(dataframe, rollUpDict, negativeColumns, multiple):
     for k,v in rollUpDict.items():
         if(k in (negativeColumns)):
             multiple *= -1
         dataframe[k] = np.where(dataframe['UCC'].isin(v), dataframe['COST']*multiple, 0.0)
+        if(k in (negativeColumns)):
+            multiple *= -1
     return(dataframe)
 
 ###############################################################################################################################
@@ -177,4 +178,90 @@ def printIncomeBrackets(incomeBrackets):
     for x in range(0,(length-1)):
         print(x)
         print(str(incomeBrackets[x])+" - "+str(incomeBrackets[x+1]))
+
+###############################################################################################################################
+
+def getExpendPercent(cleanDf, income):
+    if(income <= 0):
+        return(1)
+    coefficients = np.polyfit(cleanDf.FINCBTXM, cleanDf.iTotalExp, deg = 3)
+    p = np.poly1d(coefficients)
+    percent = p(income)/income
+    if(percent > 1):
+        percent = 1
+    return(percent)
     
+###############################################################################################################################
+
+def getSubsetNEWIDs(dataframe, columnName,  minValue, secondColumnName = None, maxValue = None):
+    if columnName in dataframe.columns:
+        # only subsetting based off one column
+        if secondColumnName == None:
+            # subsetting not within a range
+            if maxValue == None:
+                value = minValue
+                # value is a list
+                if isinstance(value, list):
+                    dataframe = dataframe[dataframe[columnName].isin(value)]
+                # value is scalar
+                else:
+                    dataframe = dataframe[dataframe[columnName]==value]
+            # the subsetting is within a range
+            else:
+                dataframe = dataframe[(dataframe[columnName]>=minValue) & (dataframe[columnName]<=maxValue)]
+        # subsetting based on two columns
+        else:
+            # subsetting not within a range
+            if maxValue == None:
+                value = minValue
+                # value is a list
+                if isinstance(value, list):
+                    dataframe = dataframe[(dataframe[columnName].isin(value)) & (dataframe[secondColumnName].isin(value))]
+                # value is scalar
+                else:
+                    dataframe = dataframe[(dataframe[columnName]==value) & (dataframe[secondColumnName]==value)]
+            # the subsetting is within a range
+            else:
+                dataframe = dataframe[((dataframe[columnName]>=minValue) & (dataframe[columnName]<=maxValue)) & ((dataframe[secondColumnName]>=minValue) & (dataframe[secondColumnName]<=maxValue)) ]
+        return(dataframe.NEWID)
+    else:
+        print("Could not a column named "+columnName+" in the dataframe")
+        
+###############################################################################################################################
+from collections import defaultdict
+import itertools
+
+def genDDict(dim=3):
+    if dim==1:
+        return defaultdict(list)
+    else:
+        return defaultdict(lambda: genDDict(dim-1))
+
+def subsetDictionary(subsetNEWIDsDict, subsetKeysList, fmliNEWIDs):
+    keys = []
+    newIDs = []
+    for subsetKey in subsetKeysList:
+        keyList = []
+        newIDsList = []
+        for key,value in subsetNEWIDsDict[subsetKey].items():
+            keyList.append(key)
+            newIDsList.append(value)
+        keys.append(keyList)
+        newIDs.append(newIDsList)
+    
+    keyCombos = list(itertools.product(*keys))
+    # subset = genDDict(dim = len(keys))
+    subset = {}
+    for keys in keyCombos:
+        for i in range(0,len(subsetKeysList)):
+            # print(subsetKeysList[i])
+            for key,value in subsetNEWIDsDict[subsetKeysList[i]].items():
+                print("Key: ",str(key))
+                print("Value: ",str(value))
+        # keyNEWIDs = []
+        # for i in range(0,len(subsetKeysList)):
+        #     for goingDeeper in subsetNEWIDsDict[subsetKeysList[i]].keys():
+        #         # need to make below line work for all
+        #         keyNEWIDs.append(set(subsetNEWIDsDict[subsetKeysList[i]][goingDeeper]))
+        # subset[keys] = list(set(fmliNEWIDs).intersection(*keyNEWIDs))
+    # return(subset)

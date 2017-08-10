@@ -79,19 +79,21 @@ else:
 
 
 # reading in the stubfiles
-DStub = pd.read_csv(pathToStubFileDir+"DStub.csv")
+# DStub = pd.read_csv(pathToStubFileDir+"DStub.csv")
 IStub = pd.read_csv(pathToStubFileDir+"IStub.csv")
-IntStub = pd.read_csv(pathToStubFileDir+"IntStub.csv")
+# IntStub = pd.read_csv(pathToStubFileDir+"IntStub.csv")
 
 # removing the index from the stufile
-DStub = DStub.drop(DStub.columns[0], axis=1)
+# DStub = DStub.drop(DStub.columns[0], axis=1)
 IStub = IStub.drop(IStub.columns[0], axis=1)
-IntStub = IntStub.drop(IntStub.columns[0], axis=1)
+# IntStub = IntStub.drop(IntStub.columns[0], axis=1)
 
 # replacing * with 0 in the level columns
-DStub.loc[DStub.level == "*", 'level'] = 0
+# DStub.loc[DStub.level == "*", 'level'] = 0
 IStub.loc[IStub.level == "*", 'level'] = 0
-IntStub.loc[IntStub.level == "*", 'level'] = 0
+# IntStub.loc[IntStub.level == "*", 'level'] = 0
+
+
 
 # creating UCC rollups for the interview files for plynty categories
 iTotalExp = categoricalUCCRollUp(IStub,["TOTALE"])
