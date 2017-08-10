@@ -1,5 +1,3 @@
-
-
 ###############################################################################################################################
 # ### Read File Set Function
 # Function that was built to easily read in and concatinate multiple files that start with the same abbreviation.
@@ -8,7 +6,7 @@
 # - fileabbreviation: The four letters associated with the files you wish to read in (ex. "fmli")
 # - directory: path to the directory that holds files that should be read in.
 
-# #### Returns:
+# ### Returns:
 # - pandas dataframe of all the files that start with the fileabbreviation
 import glob
 import pandas as pd
@@ -21,14 +19,13 @@ def readFileSet(fileabbreviation, directory):
 	largeDataframe = pd.concat(dfs,ignore_index=True)
 	return largeDataframe
 
-
-
 ###############################################################################################################################
-# ### subsetDataframe function
-# Used to subset any dataframe based on certain parameters
-# #### Parameters:
+# ### getSubsetNEWIDs Function
+# Function that returns a list of NEWIDs that correspond to the 
+
+# ### Parameters:
 # - dataframe: the pandas dataframe to subset
-# - columnName: 
+# - columnName: name of the column in the pandas dataframe to subset by
 # - minValue: this has 3 different uses
 #   1. the single value you wish to subset by
 #   2. the array of values that you wish to subset by
@@ -36,163 +33,8 @@ def readFileSet(fileabbreviation, directory):
 # - secondColumnName: the name of the second column if you wish to subest the dataframe
 # - maxValue: the highest value in a range of values you wish to subset by
 
-# #### Returns:
-
-# - subset pandas dataframe
-
-def subsetDataframe(dataframe, columnName,  minValue, secondColumnName = None, maxValue = None):
-	if columnName in dataframe.columns:
-		# only subsetting based off one column
-		if secondColumnName == None:
-			# subsetting not within a range
-			if maxValue == None:
-				value = minValue
-				# value is a list
-				if isinstance(value, list):
-					dataframe = dataframe[dataframe[columnName].isin(value)]
-				# value is scalar
-				else:
-					dataframe = dataframe[dataframe[columnName]==value]
-			# the subsetting is within a range
-			else:
-				dataframe = dataframe[(dataframe[columnName]>=minValue) & (dataframe[columnName]<=maxValue)]
-		# subsetting based on two columns
-		else:
-			# subsetting not within a range
-			if maxValue == None:
-				value = minValue
-				# value is a list
-				if isinstance(value, list):
-					dataframe = dataframe[(dataframe[columnName].isin(value)) & (dataframe[secondColumnName].isin(value))]
-				# value is scalar
-				else:
-					dataframe = dataframe[(dataframe[columnName]==value) & (dataframe[secondColumnName]==value)]
-			# the subsetting is within a range
-			else:
-				dataframe = dataframe[((dataframe[columnName]>=minValue) & (dataframe[columnName]<=maxValue)) & ((dataframe[secondColumnName]>=minValue) & (dataframe[secondColumnName]<=maxValue)) ]
-		return(dataframe)
-	else:
-		print("Could not a column named "+columnName+" in the dataframe")
-
-        
-
-###############################################################################################################################
-# ### binColumn function
-# This function is used in the plynty analysis to recode the income classes to specified incomeclasses
-# #### Parameters:
-# - dataframe: the pandas dataframe that you wish to bin a column of
-# - toBinColumnName: name of column you wish use use as values to bin
-# - binValues: array of values that are the ranges of the bins
-# - binLabels: labels assocaiated with the bins you wish to create
-# - binnedColumnName: name of the column that you wish to replace or create
-
-# #### Returns:
-# - dataframe with the binned column
-
-def binColumn(dataframe, toBinColumnName, binValues, binnedColumnName, labels=None):
-    if labels==None:
-        dataframe[binnedColumnName] = pd.cut(dataframe[toBinColumnName], bins=binValues)
-    else:
-        dataframe[binnedColumnName] = pd.cut(dataframe[toBinColumnName], bins=binValues, labels=labels)
-    return(dataframe)
-
-
-
-###############################################################################################################################
-# ### RepresentInts function
-# function that determines if a string can be repesented as an integer
-
-# Created by stackoverflow user [Triptych](https://stackoverflow.com/users/43089/triptych) and posted in [this](https://stackoverflow.com/questions/1265665/python-check-if-a-string-represents-an-int-without-using-try-except) stackoverflow question
-
-# #### Parameters:
-# - s: the string that you wish to check
-
-# #### Returns:
-# - boolean: retruns true if the string can be represented as an integer
-
-def RepresentsInt(s):
-    try: 
-        int(s)
-        return True
-    except ValueError:
-        return False
-
-    
-    
-###############################################################################################################################
-# ### Categorical UCC Roll Up function
-
-# #### Parameters:
-# - stubfile: the stubfile you are using to create the roll up
-# - abbreviations: an array of strings taht contain the abbreviations that you wish to roll up 
-# - ignoreUCCs: an array that you wish to not add into your roll up
-
-# #### Returns:
-# - an array of the uccs associated with your abbreviations
-
-def categoricalUCCRollUp(stubfile,abbreviations,ignoreUCCs=None):
-	uccs = []
-	for abbreviation in abbreviations:
-		startingRows = stubfile[stubfile['ucc']==abbreviation].index.tolist()
-		for startingRow in startingRows:
-			startingLevel = stubfile.at[startingRow,'level']
-			currentRow = startingRow+1
-			currentLevel = stubfile.at[currentRow,'level']
-			while int(startingLevel) < int(currentLevel):
-				if RepresentsInt(stubfile.at[currentRow,'ucc']):
-					if ignoreUCCs==None:
-						uccs.append(stubfile.at[currentRow,'ucc'])
-					else:
-						if not(stubfile.at[currentRow,'ucc'] in ignoreUCCs):
-							uccs.append(stubfile.at[currentRow,'ucc'])
-						
-				currentRow += 1
-				currentLevel = stubfile.at[currentRow,'level']
-	return(uccs)
-
-
-
-###############################################################################################################################
-
-import numpy as np
-def rollUpDataframe(dataframe, rollUpNameList, rollUpUCCList, negativeColumns, multiple):
-    for x in range(len(rollUpNameList)):
-        if(rollUpNameList[x] in (negativeColumns)):
-            multiple *= -1
-        dataframe[rollUpNameList[x]] = np.where(dataframe['UCC'].isin(rollUpUCCList[x]), dataframe['COST']*multiple, 0.0)
-    return(dataframe)
-
-def rollUpDataframeDict(dataframe, rollUpDict, negativeColumns, multiple):
-    for k,v in rollUpDict.items():
-        if(k in (negativeColumns)):
-            multiple *= -1
-        dataframe[k] = np.where(dataframe['UCC'].isin(v), dataframe['COST']*multiple, 0.0)
-        if(k in (negativeColumns)):
-            multiple *= -1
-    return(dataframe)
-
-###############################################################################################################################
-
-def printIncomeBrackets(incomeBrackets):
-    length = len(incomeBrackets)
-    for x in range(0,(length-1)):
-        print(x)
-        print(str(incomeBrackets[x])+" - "+str(incomeBrackets[x+1]))
-
-###############################################################################################################################
-
-def getExpendPercent(cleanDf, income):
-    if(income <= 0):
-        return(1)
-    coefficients = np.polyfit(cleanDf.FINCBTXM, cleanDf.iTotalExp, deg = 3)
-    p = np.poly1d(coefficients)
-    percent = p(income)/income
-    if(percent > 1):
-        percent = 1
-    return(percent)
-    
-###############################################################################################################################
-
+# ### Returns:
+# - list of NEWIDs that are within the subset parameters 
 def getSubsetNEWIDs(dataframe, columnName,  minValue, secondColumnName = None, maxValue = None):
     if columnName in dataframe.columns:
         # only subsetting based off one column
@@ -226,16 +68,20 @@ def getSubsetNEWIDs(dataframe, columnName,  minValue, secondColumnName = None, m
         return(dataframe.NEWID)
     else:
         print("Could not a column named "+columnName+" in the dataframe")
-        
+
 ###############################################################################################################################
 # ### Subset Dictionary function
 
 # #### Parameters:
 # - subsetNEWIDsDict: dictionary that contains lists and/or dictionaries containing NEWIDs based on characteristics
-# - subsetKeysList: an array of strings that correspont do the keys in the subsetNEWIDsDict that you wish to subset for
+# - subsetKeysList: a list of strings that correspond to the keys in the subsetNEWIDsDict to subset by
 
-# #### Returns:
-# - dictionary or set containing NEWIDs corresponding to the subsetKeysList
+# ### Returns:
+# - Set containing NEWIDs corresponding to the subsetKeysList
+# or
+# - Dictionary containing NEWIDs corresponding to the subsetKeysList
+# # - Keys: tuple of values associated with subsetKeysList
+# # - Values: Set of NEWIDs assocaited with Keys
 import itertools
 def subsetDictionary(subsetNEWIDsDict, subsetKeysList):
     singleSubsets = []
@@ -276,21 +122,100 @@ def subsetDictionary(subsetNEWIDsDict, subsetKeysList):
     return(subset)
 
 ###############################################################################################################################
+# ### RepresentInts function
+# function that determines if a string can be repesented as an integer
 
-def expensesSumByNEWID(subsetDictionary, dataDict):
-    expensesByNEWID = {}
-    mtbiKeys = [key for key in dataDict.keys() if 'mtbi' in key.lower()]
-    for key,value in subsetDictionary.items():
-        subsetDataframe = pd.DataFrame()
-        for mtbiKey in mtbiKeys:
-            subsetDataframe = subsetDataframe.append(dataDict[mtbiKey][dataDict[mtbiKey].NEWID.isin(value)], ignore_index=True)
-        expensesByNEWID[key] = subsetDataframe
-    return(expensesByNEWID)
+# Created by stackoverflow user [Triptych](https://stackoverflow.com/users/43089/triptych) and posted in [this](https://stackoverflow.com/questions/1265665/python-check-if-a-string-represents-an-int-without-using-try-except) stackoverflow question
 
+# #### Parameters:
+# - s: the string that you wish to check
 
+# #### Returns:
+# - boolean: retruns true if the string can be represented as an integer
+
+def RepresentsInt(s):
+    try: 
+        int(s)
+        return True
+    except ValueError:
+        return False
 
 ###############################################################################################################################
+# ### Categorical UCC Roll Up function
 
+# #### Parameters:
+# - stubfile: the stubfile to create the roll up
+# - abbreviations: a list of strings that contain the abbreviations or UCCs associated with the roll up 
+# - ignoreUCCs: a list to exclude from the roll up
+
+# ### Returns:
+# - a list of uccs associated with the abbreviations
+
+def categoricalUCCRollUp(stubfile,abbreviations,ignoreUCCs=None):
+	uccs = []
+	for abbreviation in abbreviations:
+		startingRows = stubfile[stubfile['ucc']==abbreviation].index.tolist()
+		for startingRow in startingRows:
+			startingLevel = stubfile.at[startingRow,'level']
+			currentRow = startingRow+1
+			currentLevel = stubfile.at[currentRow,'level']
+			while int(startingLevel) < int(currentLevel):
+				if RepresentsInt(stubfile.at[currentRow,'ucc']):
+					if ignoreUCCs==None:
+						uccs.append(stubfile.at[currentRow,'ucc'])
+					else:
+						if not(stubfile.at[currentRow,'ucc'] in ignoreUCCs):
+							uccs.append(stubfile.at[currentRow,'ucc'])
+						
+				currentRow += 1
+				currentLevel = stubfile.at[currentRow,'level']
+	return(uccs)
+
+###############################################################################################################################
+# ### Expenses Sum By NEWID function
+
+# ### Parameters:
+# - subsetDictionary: two options
+# 	1. Set containing NEWIDs corresponding to the subsetKeysList
+#	2. Dictionary containing NEWIDs corresponding to the subsetKeysList
+#		- Keys: tuple of values associated with subsetKeysList
+#		- Values: Set of NEWIDs assocaited with Keys
+# - dataDict:
+
+# ### Returns:
+# - dictionary
+# # - Keys: tuple of subset associated with the subset key list
+# # - Values: Dataframe of expenses sums by NEWID
+def expensesSumByNEWID(subsetDictionary, dataDict):
+	mtbiKeys = [key for key in dataDict.keys() if 'mtbi' in key.lower()]
+	if isinstance(subsetDictionary,dict):
+		expensesByNEWID = {}
+		for key,value in subsetDictionary.items():
+			subsetDataframe = pd.DataFrame()
+			for mtbiKey in mtbiKeys:
+				subsetDataframe = subsetDataframe.append(dataDict[mtbiKey][dataDict[mtbiKey].NEWID.isin(value)], ignore_index=True)
+			expensesByNEWID[key] = subsetDataframe
+		return(expensesByNEWID)
+	else:
+		subsetDataframe = pd.DataFrame()
+		for mtbiKey in mtbiKeys:
+			subsetDataframe = subsetDataframe.append(dataDict[mtbiKey][dataDict[mtbiKey].NEWID.isin(subsetDictionary)], ignore_index=True)
+		return(subsetDataframe)
+
+###############################################################################################################################
+# ### Dictionary Sum function
+
+# ### Parameters:
+# incomeClassesDict: Dictionary
+# - Keys: Income Classes
+# - Values: Dataframes subset for the Income Class
+
+# ### Returns:
+# - dictionary
+# # - Keys: Income classes
+# # - Values: dictionaries
+# # # - Keys: plynty categories
+# # # - Values: sum of income for category
 def dictionarySum(incomeClassesDict):
     for key,value in incomeClassesDict.items():
         value = value.drop("NEWID", 1)
@@ -301,14 +226,56 @@ def dictionarySum(incomeClassesDict):
     return(incomeClassesDict)
 
 ###############################################################################################################################
+# ### Dictionary Sum function
 
-def incomeBeforeTaxesSubset(dataDict, subsetNEWIDdict, incomeBeforeTaxesColumn):
-    incomeBeforeTaxesDict = {}
-    for key,value in subsetNEWIDdict.items():
-        totalIncome = 0
-        usedNEWIDs = set()
-        for fmliName in [key for key in dataDict.keys() if 'fmli' in key.lower()]:
-            totalIncome += sum(list(dataDict[fmliName][dataDict[fmliName].NEWID.isin(subsetNEWIDdict[key]) & ~dataDict[fmliName].NEWID.isin(usedNEWIDs)][incomeBeforeTaxesColumn]/12))
-            usedNEWIDs = usedNEWIDs.union(set(dataDict[fmliName][dataDict[fmliName].NEWID.isin(subsetNEWIDdict[key])].NEWID))
-        incomeBeforeTaxesDict[key] = totalIncome 
-    return(incomeBeforeTaxesDict)
+# ### Parameters:
+# incomeClassDict
+# - Keys: Income Class
+# - Values: dictionary of plynty categories mapped to total sum
+# # - Keys: plynty categories
+# # - Values: total spent on the plynty category
+# totalCategory: string of plynty category in sub dictionary that contains the total expenditure
+
+# ### Returns:
+# - Dictionary
+# # - Keys: Income brackets
+# # - Values: dictionaries
+# # # - Keys: plynty categories
+# # # - Values: percent of total expenditure spent on the plynty category
+import copy
+def incomeSumToPercent(incomeClassDict, totalCategory):
+	# copying the incomeClassDict
+    returnDict = copy.deepcopy(incomeClassDict)
+    for key,value in incomeClassDict.items():
+        totalExpenditrue = incomeClassDict[key][totalCategory]
+        for k,v in value.items():
+            returnDict[key][k] = v/totalExpenditrue
+    return(returnDict)
+
+###############################################################################################################################
+# ### Weight Expenses by NEWID function
+
+# ### Parameters:
+# expensesByNEWID (dictionary)
+# - Keys: tuple of subset
+# - Values: Dataframe of plynty expenses (nonWeighted)
+# weightSeries
+# - index: NEWID
+# - value: Weight multiple
+
+# ### Returns:
+# - Dictionary
+# # - Keys: tuple of subset
+# # - Values: Dataframe of plynty expenses (weighted)
+import numpy as np
+def weightExpensesByNEWID(expensesByNEWID, weightSeries):
+	for key,value in expensesByNEWID.items():
+	    for index, row in value.iterrows():
+	        weight = weightSeries[row["NEWID"]]
+	        if not isinstance(weight, np.float64):
+	            weight = weight.values.mean()
+	        for column in value.columns[value.columns != 'NEWID']:
+	            row[column] = row[column] * weight
+	        value.iloc[index] = row
+	    expensesByNEWID[key] = value
+	return(expensesByNEWID)
