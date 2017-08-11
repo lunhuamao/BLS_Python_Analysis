@@ -28,18 +28,26 @@
 # - Create csv files that has average percentages spent on plynty categories for certain income classes
 # - Compare the Family CUs vs the Single person CUs
 
-
 # #### Importing Dependencies
+
+
+
+print("Importing Dependencies")
 
 import pandas as pd
 import numpy as np
 import os
 import subprocess
 from copy import deepcopy
+import matplotlib.pyplot as plt
 from BLSFunctions import *
 
 
 # # Setting Variables
+
+
+
+print("Setting Variables")
 
 years = ["13","14","15"]
 filesToRead = ["fmli", "mtbi"]
@@ -49,17 +57,19 @@ maxAge = 75
 
 familyIncomeBrackets = [-10000000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000, 110000, 120000, 130000, 140000, 160000, 180000, 210000, 240000, 290000, 9980000]
 singleIncomeBrackets = [-10000000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 90000, 120000, 9980000]
-# familyIncomeBrackets = [-10000000, 20000, 30000, 40000, 50000, 60000, 75000, 90000, 110000, 140000, 200000, 9990000]
-# singleIncomeBrackets = [-10000000, 15000, 30000, 40000, 50000, 60000, 75000, 100000, 9990000]
 
-pumdDir = ".../BLS_Python_Analysis/CE_PUMD/"
+pumdDir = "./CE_PUMD/"
 
 
 # # Reading in Stubfiles
 
+
+
+print("Reading in Stubfiles")
+
 # Directory where stubfiles are located
-pathToStubFileDir = ".../BLS_Python_Analysis/Stubfiles/"
-rScriptStubfilePathAndName = ".../BLS_Python_Analysis/creatingStubCsvs.R"
+pathToStubFileDir = "./Stubfiles/"
+rScriptStubfilePathAndName = "./creatingStubCsvs.R"
 
 stubFileDict = {}
 stubFileDict["IStub"] =  "IStub2015.txt"
@@ -81,6 +91,14 @@ for key in stubFileDict.keys():
 
 
 # # Creating the Data dictionary
+# output:
+#    - data (dictionary)
+#       - key: filenameYear
+#       - value: dataframe
+
+
+
+print("Creating the Data dictionary")
 
 data = {}
 for year in years:
@@ -94,6 +112,14 @@ fmli = pd.concat([value for key,value in data.items() if 'fmli' in key.lower()],
 
 
 # # Creating Subset NEWID dictionary
+# output:
+# - subsetNEWIDs
+#  - key: Subset Category
+#  - value: dictionary or list of NEWIDs associated with the subset
+
+
+
+print("Creating Subset NEWID dictionary")
 
 subsetNEWIDs = {}
 subsetNEWIDs["Age"] = []
@@ -117,7 +143,6 @@ for year in years:
 # filling in lists
 for year in years:
     fmliYear = "fmli"+year
-#     subsetNEWIDs["Year"][2000+int(year)].extend(getSubsetNEWIDs(dataframe=data[fmliYear], columnName = "QINTRVYR", minValue=2000+int(year))) 
     subsetNEWIDs["Age"].extend(getSubsetNEWIDs(dataframe=data[fmliYear], columnName="AGE_REF", minValue=minAge, maxValue=maxAge))
     subsetNEWIDs["Family"].extend(getSubsetNEWIDs(dataframe=data[fmliYear], columnName="FAM_SIZE", minValue = 2, maxValue = 100))
     subsetNEWIDs["Single"].extend(getSubsetNEWIDs(dataframe=data[fmliYear], columnName="FAM_SIZE", minValue = 1))
@@ -133,6 +158,8 @@ for year in years:
 
 # ### Creating Human Readable Income bracket dictionaries
 
+
+
 getSingleIncomeBracket = {}
 for bracket in subsetNEWIDs["SingleIncome"].keys():
     getSingleIncomeBracket[bracket] = str(singleIncomeBrackets[bracket-1])+"-"+str(singleIncomeBrackets[bracket])
@@ -143,12 +170,27 @@ for bracket in subsetNEWIDs["FamilyIncome"].keys():
 
 
 # # Subsetting NEWIDs based on SubsetNEWIDs dictionary
+# outputs:
+# - Single (dictionary)
+#  - key: tuple of subset category
+#  - value: set of NEWIDs assocaiated with tuple
+# - Family (dictionary)
+#  - key: tuple of subset category
+#  - value: set of NEWIDs assocaiated with tuple
+
+
+
+print("Subsetting NEWIDs")
 
 Single = subsetDictionary(subsetNEWIDs, ["Age","Single","Year","Month","SingleIncome"])
 Family = subsetDictionary(subsetNEWIDs, ["Age","Family","Year","Month","FamilyIncome"])
 
 
 # ## Medical Emergencies
+
+
+
+print("Medical Emergency analysis")
 
 allSingleNEWIDs = set()
 for newIDset in Single.values():
@@ -173,15 +215,22 @@ print("The Hospital expense mean value is: "+str(round(oneTimeSubsetMtbi.COST.me
 
 
 # # Creating Categorical UCC rollups
+# outputs:
+# - rollupDict (dictionary)
+#  - key: Rollup category name
+#  - value: list of NEWIDs associated with rollup
+
+
+
+print("Creating Categorical UCC rollups")
 
 MonthlyHousing = ["220311","220313","880110","210110","800710","210901","220312","220314","880310","210902","220211","230901","340911","220901","220212","230902","340912","220902","210310"]
-# MonthlyHousing = ["220311","220313","880110","210110","800710","210901","220312","220314","880310","210902"]
 MonthlyHousing.extend(categoricalUCCRollUp(stubFileDict["IStub"], ["UTILS"]))
 
 rollupDict = {"TotalExp":(categoricalUCCRollUp(stubFileDict["IStub"],["TOTALE"])),
 "FoodAtHome":(categoricalUCCRollUp(stubFileDict["IStub"], ["FOODHO", "ALCHOM"])),
 "FoodAway":(categoricalUCCRollUp(stubFileDict["IStub"], ["FOODAW", "ALCAWA"])),
-"Housing":(["220311","220313","880110","210110","800710","210901","220312","220314","880310","210902"]),
+"Housing":(["220311","220313","880110","210110","800710","210901","220312","220314","880310","210902","220211","230901","340911","220901","220212","230902","340912","220902","210310"]),
 "OtherHousing":(categoricalUCCRollUp(stubFileDict["IStub"], ["HOUSIN"], ignoreUCCs = MonthlyHousing)),
 "Utilities":(categoricalUCCRollUp(stubFileDict["IStub"], ["UTILS"])),
 "ClothingAndBeauty":(categoricalUCCRollUp(stubFileDict["IStub"], ["APPARE","PERSCA"])),
@@ -200,6 +249,12 @@ for key,value in rollupDict.items():
 
 
 # # Rolling up MTBI files into plynty categories
+# - creates columns in the mtbi files that correspond with the rollup categories
+# - fills new rollup columns based on mtbi observations
+
+
+
+print("Rolling up MTBI files into Plynty Categories")
 
 negativeColumns = ["HousingPrinciple"]
 multiple = 1
@@ -213,6 +268,8 @@ for dataframe in [key for key in data.keys() if 'mtbi' in key.lower()]:
 
 # #### Cleaning the MTBI dataframes
 
+
+
 keepColumns = list(rollupDict.keys())
 keepColumns.append("NEWID")
 
@@ -221,6 +278,14 @@ for dataframe in [key for key in data.keys() if 'mtbi' in key.lower()]:
 
 
 # # Adding up all the expenses by each NEWID
+# - Sums for each NEWID
+# - Adds HousingPrinciple into Housing
+# - Adds HousingPrinciple into TotalExp
+# - Drops the HousingPrinciple column
+
+
+
+print("Adding up all the expenses by NEWIDs")
 
 for dataframe in [key for key in data.keys() if 'mtbi' in key.lower()]:
     data[dataframe] = data[dataframe].groupby(['NEWID'],as_index=False).sum()
@@ -231,17 +296,27 @@ for dataframe in [key for key in data.keys() if 'mtbi' in key.lower()]:
 
 # ### Subsetting MTBI files with subset NEWIDs
 
+
+
+print("Subsetting MTBI files")
+
 expensesByNEWIDSingle = expensesSumByNEWID(Single, data)
 expensesByNEWIDFamily = expensesSumByNEWID(Family, data)
 
 
 # ### Saving the pre-weight expenses by NEWID for the regression
 
+
+
 nonWeightedExpensesByNEWIDSingle = deepcopy(expensesByNEWIDSingle)
 nonWeightedExpensesByNEWIDFamily = deepcopy(expensesByNEWIDFamily)
 
 
 # ## Weighting the Samples
+
+
+
+print("Weighting the Samples... This may take a while.")
 
 weightSeries = fmli["FINLWT21"]/12
 weightSeries.index = fmli["NEWID"]
@@ -251,6 +326,8 @@ expensesByNEWIDFamily = weightExpensesByNEWID(expensesByNEWIDFamily, weightSerie
 
 
 # ## Combining Data frames by Income Class
+
+
 
 IncomeClassesSingle = {}
 for income in subsetNEWIDs["SingleIncome"]:
@@ -270,12 +347,19 @@ for income in subsetNEWIDs["FamilyIncome"]:
 
 
 # ### Sum of all the columns
+# - Adding up all the columns of a dataframe into totals contained in a dictionary 
+
+
 
 plyntySingleSumDict = dictionarySum(IncomeClassesSingle)
 plyntyFamilySumDict = dictionarySum(IncomeClassesFamily)
 
 
 # ### Creating the Percentage dictionaries
+
+
+
+print("Creating the percentage dictionaries")
 
 # fixing the TotalExp
 for income in plyntySingleSumDict.keys():
@@ -292,12 +376,17 @@ for income in plyntyFamilySumDict.keys():
             total += value
     plyntyFamilySumDict[income]['TotalExp'] = total
 
+
+
+
 plyntySingleDict = incomeSumToPercent(plyntySingleSumDict, "TotalExp")
 plyntyFamilyDict = incomeSumToPercent(plyntyFamilySumDict, "TotalExp")
 
 
 # ### Deleting the TotalExp Column
 # This column at this point will be all 1s
+
+
 
 for key in plyntySingleDict.keys():
     del plyntySingleDict[key]['TotalExp']
@@ -307,14 +396,43 @@ for key in plyntyFamilyDict.keys():
 
 # # Creating and printing out the plynty Dataframes
 
+
+
 plyntySingle = pd.DataFrame.from_dict(plyntySingleDict,orient='index')
 plyntyFamily = pd.DataFrame.from_dict(plyntyFamilyDict,orient='index')
+
+
+
+
+plyntySingle
+
+
+
+
+plyntyFamily
+
+
+# # Outputing Dataframes to Csv
+
+
+
+print("Creating the csvs filled with plynty categories percentages")
 
 plyntySingle.to_csv("plyntySinglePercentages.csv")
 plyntyFamily.to_csv("plyntyFamilyPercentages.csv")
 
 
-# # Income Spent Regression
+# 
+# ### Making Dataframe of NEWID,TotalExp, and income before taxes
+# outputs:
+# - incomeRegressionSingle (dataframe)
+#  - contains NEWID, TotalExp, and IncomeBeforeTaxes for each NEWID in single subset
+# - incomeRegressionFamily (dataframe)
+#  - contains NEWID, TotalExp, and IncomeBeforeTaxes for each NEWID in family subset
+
+
+
+print("Creating the Income Spent Regression")
 
 incomeRegressionSingle = pd.DataFrame()
 for value in nonWeightedExpensesByNEWIDSingle.values():
@@ -333,6 +451,9 @@ incomeRegressionSingle = incomeRegressionSingle[incomeRegressionSingle > 0].drop
 incomeRegressionFamily = pd.merge(incomeRegressionFamily, fmli, on='NEWID', how='inner')
 incomeRegressionFamily['TotalExp'] = incomeRegressionFamily['TotalExp'] * 4
 incomeRegressionFamily = incomeRegressionFamily[incomeRegressionFamily > 0].dropna()
+
+
+
 
 def getExpendPercent(income, regressionDf, truncation = None):
     if income <= 0:
@@ -363,10 +484,14 @@ def oldRegression(income):
 
 # # Plotting
 
-import matplotlib.pyplot as plt
+
+
+print("Plotting")
 
 
 # ### Creating the Percent of Income Spent Graph
+
+
 
 xSingleRegression = range(0,400000,1000)
 xFamilyRegression = range(0,400000,1000)
@@ -384,6 +509,8 @@ for income in xOldRegression:
 
 # ### Trucation point for regressions
 
+
+
 SingleTruncation = [ySingleRegression.index(min(ySingleRegression)) * 1000, round(min(ySingleRegression),2)]
 FamilyTruncation = [yFamilyRegression.index(min(yFamilyRegression)) * 1000, round(min(yFamilyRegression),2)]
 ySingleRegression = []
@@ -392,6 +519,9 @@ for income in xSingleRegression:
     ySingleRegression.append(getExpendPercent(income, incomeRegressionSingle, SingleTruncation))
 for income in xFamilyRegression:
     yFamilyRegression.append(getExpendPercent(income, incomeRegressionFamily, FamilyTruncation))
+
+
+
 
 plt.plot(xOldRegression,yOldRegression, color = "g", label = "Old Regression")
 plt.plot(xSingleRegression,ySingleRegression, color = "b", label = "Single Regression")
@@ -403,7 +533,48 @@ plt.legend()
 plt.show()
 
 
+# ### Income vs Expenditure plots
+
+
+
+sortedIncomeSingleRegression = sorted(list(set(incomeRegressionSingle.FINCBTXM)))
+singleIncomeRegressionExamples = []
+for income in sortedIncomeSingleRegression:
+    singleIncomeRegressionExamples.append(income * getExpendPercent(income, incomeRegressionSingle))
+    
+sortedIncomeFamilyRegression = sorted(list(set(incomeRegressionFamily.FINCBTXM)))
+familyIncomeRegressionExamples = []
+for income in sortedIncomeFamilyRegression:
+    familyIncomeRegressionExamples.append(income * getExpendPercent(income, incomeRegressionFamily))
+
+
+
+
+plt.scatter(incomeRegressionSingle.FINCBTXM, incomeRegressionSingle.TotalExp, color='b', s=3)
+plt.plot(sortedIncomeSingleRegression, singleIncomeRegressionExamples, color = "black")
+plt.xlabel("Income before Taxes")
+plt.ylabel("Dollars Spent on Plynty categories")
+plt.title("Single person CUs Income vs Expenditure")
+plt.xlim(0,700000)
+plt.ylim(0,1000000)
+plt.show()
+
+
+
+
+plt.scatter(incomeRegressionFamily.FINCBTXM, incomeRegressionFamily.TotalExp, color='r', s=3)
+plt.plot(sortedIncomeFamilyRegression, familyIncomeRegressionExamples, color = "black")
+plt.xlabel("Income before Taxes")
+plt.ylabel("Dollars Spent on Plynty categories")
+plt.title("Multiple person CUs Income vs Expenditure")
+plt.xlim(0,700000)
+plt.ylim(0,1000000)
+plt.show()
+
+
 # ### Number of Users
+
+
 
 singleCountNEWIDs = {}
 for income in subsetNEWIDs["SingleIncome"]:
@@ -421,12 +592,18 @@ for income in subsetNEWIDs["FamilyIncome"]:
             newidSet = newidSet.union(Family[(year,month,income)])
     familyCountNEWIDs[income] = len(newidSet)
 
+
+
+
 plt.bar(range(len(singleCountNEWIDs)), singleCountNEWIDs.values(), align='center', color='b')
 plt.xticks(range(len(singleCountNEWIDs)), singleCountNEWIDs.keys())
 plt.xlabel("Income Class")
 plt.ylabel("Count of CUs")
 plt.title("Count of Single Person CUs")
 plt.show()
+
+
+
 
 plt.bar(range(len(familyCountNEWIDs)), familyCountNEWIDs.values(), align='center', color='r')
 plt.xticks(range(len(familyCountNEWIDs)), familyCountNEWIDs.keys())
@@ -438,17 +615,17 @@ plt.show()
 
 # # Get Example Expenditures
 
-income = 120000
-single = False
+
+
+income = 50000
+single = True
 
 if single:
-    print("They are single!")
     regressionDf = incomeRegressionSingle
     theIncomeBrackets = singleIncomeBrackets
     plyntyDf = plyntySingle
     truncation = SingleTruncation
 else:
-    print("It\'s a Family")
     regressionDf = incomeRegressionFamily
     theIncomeBrackets = familyIncomeBrackets
     plyntyDf = plyntyFamily
@@ -465,6 +642,8 @@ round((plyntyDf.iloc[getIncomeBracketIndex(income, theIncomeBrackets),:] * getEx
 
 
 # ## Hospital room and services
+
+
 
 plt.boxplot(list(oneTimeSubsetMtbi.COST))
 plt.title("Boxplot of Hospital Costs")
